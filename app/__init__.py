@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restx import Api
 from app.config import Config
-from app.extensions import db, ma, jwt, migrate
+from app.extensions import db, ma, jwt
 from sqlalchemy import text
 from app.api.resources.tasks import api as tasks_ns
 
@@ -9,43 +9,33 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Inicializar extensiones
+    # 1. Inicializar extensiones básicas
     db.init_app(app)
     ma.init_app(app)
     jwt.init_app(app)
-    migrate.init_app(app, db)  # Flask-Migrate
 
-    # Registro manual de extensiones para verificación
-    app.extensions['marshmallow'] = ma
-    app.extensions['jwt'] = jwt
-    app.extensions['migrate'] = migrate
-
-    # Inicializa Flask-RESTX
-    api = Api(app, title="Taskosaurus API", version="1.0", description="API de tareas")
+    # 2. Configurar API REST
+    api = Api(
+        app, 
+        title="Taskosaurus API",
+        version="1.0",
+        description="API para gestión de tareas"
+    )
     api.add_namespace(tasks_ns, path='/tasks')
 
+    # 3. Creación de tablas y validación (solo en desarrollo)
     with app.app_context():
-        # Validación de conexión y extensiones
-        print("\n🔍 Validando configuraciones iniciales:")
-        
-        # 1. Verificar conexión a DB
         try:
+            db.create_all()  # Crea todas las tablas
+            print("✅ Tablas creadas/existentes en PostgreSQL")
+            
+            # Test de conexión
             db.session.execute(text('SELECT 1'))
-            print("✅ 1. Conexión a PostgreSQL: Correcta")
+            print("✅ Conexión a PostgreSQL activa")
+            
         except Exception as e:
-            print(f"❌ 1. Conexión a PostgreSQL: Falló - {str(e)}")
-
-        # 2. Verificar extensiones clave
-        print(f"✅ 2. SQLAlchemy: {'Cargado' if 'sqlalchemy' in app.extensions else 'Error'}")
-        print(f"✅ 3. Marshmallow: {'Cargado' if 'marshmallow' in app.extensions else 'Error'}")
-        print(f"✅ 4. JWT: {'Cargado' if 'jwt' in app.extensions else 'Error'}")
-        print(f"✅ 5. Flask-Migrate: {'Cargado' if 'migrate' in app.extensions else 'Error'}")
-
-        # 3. Verificar modelo Task (opcional)
-        try:
-            from app.models import Task
-            print("✅ 6. Modelo 'Task': Importado correctamente")
-        except Exception as e:
-            print(f"❌ 6. Modelo 'Task': Error - {str(e)}")
+            print(f"❌ Error en base de datos: {str(e)}")
+            if "already exists" not in str(e):  # Ignora errores de tablas existentes
+                raise
 
     return app

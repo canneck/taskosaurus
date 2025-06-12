@@ -1,0 +1,12 @@
+{
+  "status_rules": {
+    "initial_status": "pending",
+    "transitions": {
+      "pending": ["in_progress", "cancelled"],
+      "in_progress": ["completed", "cancelled"],
+      "completed": ["archived"],
+      "cancelled": ["archived"],
+      "archived": []
+    }
+  }
+}

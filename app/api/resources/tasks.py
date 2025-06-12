@@ -2,6 +2,7 @@ from flask_restx import Resource, Namespace
 from app.models import Task
 from app.extensions import db
 from app.schemas import task_schema, tasks_schema
+from app.validators.status_validator import StatusValidator
 
 api = Namespace('tasks', description='Operaciones con tareas')
 
@@ -42,18 +43,14 @@ class TaskDetail(Resource):
         task = Task.query.get_or_404(id)
         data = api.payload
         
-        # Validar que el estado esté en los valores permitidos
-        valid_statuses = ['pending', 'in_progress', 'completed', 'cancelled']
-        if 'status' in data and data['status'] not in valid_statuses:
-            api.abort(400, f"Estado inválido. Valores permitidos: {', '.join(valid_statuses)}")
+        validator = StatusValidator()
         
-        # Actualizar solo campos permitidos
-        if 'title' in data:
-            task.title = data['title']
-        if 'description' in data:
-            task.description = data['description']
         if 'status' in data:
-            task.status = data['status']
+            if not validator.is_valid_transition(task.status, data['status']):
+                api.abort(400, f"Transición no permitida de {task.status} a {data['status']}")
         
+        # Resto de la lógica de actualización...
+        task.status = data.get('status', task.status)
         db.session.commit()
-        return task_schema.dump(task)
+        
+        return task_schema.dump(task)    

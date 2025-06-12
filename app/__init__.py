@@ -1,9 +1,20 @@
-from flask import Flask
-from flask_restx import Api
+from flask import Flask, request
+from flask_restx import Api, abort
 from app.config import Config
 from app.extensions import db, ma, jwt
 from sqlalchemy import text
 from app.api.resources.tasks import api as tasks_ns
+from functools import wraps
+
+# Decorador para validar API Key
+def api_key_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.headers.get('X-API-KEY')
+        if api_key != Config.SECRET_KEY:
+            abort(401, message="API Key inválida o faltante")
+        return f(*args, **kwargs)
+    return decorated
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -19,7 +30,15 @@ def create_app(config_class=Config):
         app, 
         title="Taskosaurus API",
         version="1.0",
-        description="API para gestión de tareas"
+        description="API para gestión de tareas",
+        decorators=[api_key_required],  # Aplica a TODOS los endpoints
+        authorizations={
+            'SecretKey': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'X-API-KEY'
+            }
+        }
     )
     api.add_namespace(tasks_ns, path='/tasks')
 

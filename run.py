@@ -5,9 +5,15 @@
 # if __name__ == '__main__':
 #     app.run(debug=True)
 
-from app import create_app
+import traceback
 
-app = create_app()
+try:
+    from app import create_app
+    app = create_app()
+except Exception as e:
+    print("❌ Error al iniciar la app:")
+    traceback.print_exc()
+    raise e
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)

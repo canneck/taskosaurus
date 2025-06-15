@@ -9,8 +9,33 @@ api = Namespace('tasks', description='Operaciones con tareas')
 @api.route('/')
 class TaskList(Resource):
     def get(self):
-        """Listar todas las tareas"""
-        tasks = Task.query.all()
+        """
+        Listar todas las tareas con filtros opcionales:
+        - status
+        - created_at (YYYY-MM-DD)
+        - title (búsqueda parcial)
+        """
+        query = Task.query.filter(Task.status != 'archived')  # Excluye archivadas
+
+        status = api.payload.get('status') if api.payload else None
+        created_at = api.payload.get('created_at') if api.payload else None
+        title = api.payload.get('title') if api.payload else None
+
+        if status:
+            query = query.filter(Task.status == status)
+
+        if created_at:
+            from datetime import datetime
+            try:
+                date = datetime.strptime(created_at, "%Y-%m-%d").date()
+                query = query.filter(db.func.date(Task.created_at) == date)
+            except ValueError:
+                api.abort(400, "Formato de fecha inválido. Usa YYYY-MM-DD")
+
+        if title:
+            query = query.filter(Task.title.ilike(f"%{title}%"))
+
+        tasks = query.all()
         return tasks_schema.dump(tasks)
 
     def post(self):
@@ -18,13 +43,22 @@ class TaskList(Resource):
         # {
         #   "title": "Comprar café",
         #   "description": "Ir a plaza vea a comprar café",
-        #   "status": "Pending"
+        #   "status": "pending"
         # }
         data = api.payload  # JSON enviado en la request
         new_task = task_schema.load(data)
         db.session.add(new_task)
         db.session.commit()
         return task_schema.dump(new_task), 201
+    
+    
+@api.route('/get-archived')
+class ArchivedTasks(Resource):
+    def get(self):
+        """Listar solo tareas archivadas"""
+        archived_tasks = Task.query.filter_by(status='archived').all()
+        return tasks_schema.dump(archived_tasks)
+
 
 @api.route('/<int:id>')
 class TaskDetail(Resource):
@@ -38,7 +72,7 @@ class TaskDetail(Resource):
         # {
         #   "title": "Comprar café",
         #   "description": "Ir a plaza vea a comprar café",
-        #   "status": "Pending"
+        #   "status": "pending"
         # }
         task = Task.query.get_or_404(id)
         data = api.payload
@@ -54,3 +88,10 @@ class TaskDetail(Resource):
         db.session.commit()
         
         return task_schema.dump(task)    
+    
+    def delete(self, id):
+        """Eliminar una tarea por ID"""
+        task = Task.query.get_or_404(id)
+        db.session.delete(task)
+        db.session.commit()
+        return {'message': f'Tarea con ID {id} eliminada correctamente.'}, 200

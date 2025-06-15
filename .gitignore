@@ -1,3 +1,4 @@
+.env
 # Entornos virtuales
 venv/
 .env

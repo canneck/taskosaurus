@@ -9,8 +9,8 @@ class Task(db.Model):
     description = db.Column(db.Text, nullable=True)
     status = db.Column(
         db.String(20),
-        default='Pending',                    # Valor por defecto en SQLAlchemy/Python
-        server_default=db.text("'Pending'")   # Valor por defecto en la base de datos
+        default='pending',                    # Valor por defecto en SQLAlchemy/Python
+        server_default=db.text("'pending'")   # Valor por defecto en la base de datos
     )
     created_at = db.Column(db.DateTime, server_default=db.func.now())  # Fecha automática
 

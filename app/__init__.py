@@ -5,13 +5,15 @@ from app.extensions import db, ma, jwt
 from sqlalchemy import text
 from app.api.resources.tasks import api as tasks_ns
 from functools import wraps
+from flask import current_app
 
 # Decorador para validar API Key
 def api_key_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         api_key = request.headers.get('X-API-KEY')
-        if api_key != Config.SECRET_KEY:
+        # if api_key != Config.SECRET_KEY:
+        if api_key != current_app.config['SECRET_KEY']:
             abort(401, message="API Key inválida o faltante")
         return f(*args, **kwargs)
     return decorated

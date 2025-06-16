@@ -3,6 +3,7 @@ from app.models import Task
 from app.extensions import db
 from app.schemas import task_schema, tasks_schema
 from app.validators.status_validator import StatusValidator
+from flask import request
 
 api = Namespace('tasks', description='Operaciones con tareas')
 
@@ -17,9 +18,9 @@ class TaskList(Resource):
         """
         query = Task.query.filter(Task.status != 'archived')  # Excluye archivadas
 
-        status = api.payload.get('status') if api.payload else None
-        created_at = api.payload.get('created_at') if api.payload else None
-        title = api.payload.get('title') if api.payload else None
+        status = request.args.get('status')
+        created_at = request.args.get('created_at')
+        title = request.args.get('title')
 
         if status:
             query = query.filter(Task.status == status)
